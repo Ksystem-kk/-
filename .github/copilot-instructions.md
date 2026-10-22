@@ -1,19 +1,26 @@
 # Copilot instructions
 
-## Response language
+## 応答言語
 
-- Respond to the user in Japanese by default, including explanations, summaries, and questions. Keep code, identifiers, commands, and quoted source text in their original language.
+- ユーザーへの説明、要約、質問は日本語で返してください。コード、識別子、コマンド、引用した原文は元の表記を維持してください。
 
-## Repository context
+## リポジトリの構成と動作
 
-- This is a Kotlin Android app. `MainActivity` owns the CameraX preview and ML Kit QR scanning flow; `QrCodeValidator` checks the raw QR payload before the activity stores the first valid value and compares it with the next valid value.
-- Accepted payloads start with `KKNI` and are 19 or 20 characters in total. Comparison is exact; do not normalize or persist scanned values.
-- After the first accepted scan, require a frame with no detected QR before accepting the second, to prevent the same visible code from being compared with itself.
+- Kotlin製の単一モジュールAndroidアプリです。`MainActivity`がCameraXのプレビューと画像解析を管理し、ML KitのQR専用スキャナーでフレームを処理します。カメラ権限はActivity Result APIで要求します。
+- `QrCodeValidator`はQRの生データが大文字の`KKNI`で始まり、全体で19文字または20文字であることを判定します。数字のみであることや、大文字小文字を無視することは追加要件がない限り仮定しないでください。
+- `MainActivity`は有効な1つ目の値をメモリ上に保持し、スキャン結果を完全一致で比較します。2つ目を受け付ける前にQR未検出のフレームを一度確認し、同じコードを連続して読み取る誤比較を防ぎます。比較結果は画面に表示し、再試行で状態を初期化します。読み取った値を永続化したり正規化したりしないでください。
+- 比較不一致は画面に赤字のエラーとして表示し、`ToneGenerator`で通知音を鳴らします。Activity終了時に音源を解放してください。
+- Gradle設定はKotlin DSLです。Android SDKのバージョンや依存ライブラリの設定を変更するときは`app/build.gradle.kts`を確認してください。
 
-## Build, test, and lint
+## ビルド、テスト、lint
 
-- Build: `./gradlew :app:assembleDebug`
-- Unit tests: `./gradlew :app:testDebugUnitTest`
-- Single test class: `./gradlew :app:testDebugUnitTest --tests 'com.example.qrcodematcher.QrCodeValidatorTest'`
-- Lint: `./gradlew :app:lintDebug`
-- JDK 17 and Android SDK platform 35 are required.
+- JDK 17とAndroid SDK Platform 35が必要です。Gradle Wrapperを使用してください。
+- デバッグビルド: `./gradlew :app:assembleDebug`
+- 単体テスト全件: `./gradlew :app:testDebugUnitTest`
+- テストクラス単位: `./gradlew :app:testDebugUnitTest --tests 'com.example.qrcodematcher.QrCodeValidatorTest'`
+- テストメソッド単位: `./gradlew :app:testDebugUnitTest --tests 'com.example.qrcodematcher.QrCodeValidatorTest.acceptsValuesStartingWithKkniAtSupportedLengths'`
+- Android lint: `./gradlew :app:lintDebug`
+
+## テスト上の規約
+
+- 現在の単体テストはJUnit 4を使用し、`app/src/test/java`に配置しています。QR形式の判定を変更する場合は`QrCodeValidatorTest`の受け入れ条件と拒否条件を合わせて更新してください。

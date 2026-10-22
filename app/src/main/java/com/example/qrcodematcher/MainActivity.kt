@@ -3,6 +3,8 @@ package com.example.qrcodematcher
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -36,6 +38,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var stepText: TextView
     private lateinit var statusText: TextView
     private lateinit var resetButton: Button
+    private var errorToneGenerator: ToneGenerator? = null
     private var firstValue: String? = null
     private var firstCodeRemoved = false
     private var comparisonFinished = false
@@ -69,6 +72,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        errorToneGenerator?.release()
         scanner.close()
         cameraExecutor.shutdown()
         super.onDestroy()
@@ -214,11 +218,18 @@ class MainActivity : ComponentActivity() {
         }
 
         comparisonFinished = true
-        stepText.text = if (first == value) "一致しました" else "一致しません"
-        statusText.text = if (first == value) {
-            "2つのQRコードのデータは完全に同じです。"
+        if (first == value) {
+            stepText.text = "一致しました"
+            statusText.setTextColor(Color.DKGRAY)
+            statusText.text = "2つのQRコードのデータは完全に同じです。"
         } else {
-            "2つのQRコードのデータは異なります。"
+            stepText.text = "エラー：一致しません"
+            statusText.setTextColor(Color.RED)
+            statusText.text = "エラー：2つのQRコードのデータが異なります。"
+            val toneGenerator = errorToneGenerator
+                ?: ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+                    .also { errorToneGenerator = it }
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_NACK, 500)
         }
     }
 
@@ -227,6 +238,7 @@ class MainActivity : ComponentActivity() {
         firstCodeRemoved = false
         comparisonFinished = false
         stepText.text = "1つ目のQRコードを読み取ってください"
+        statusText.setTextColor(Color.DKGRAY)
         statusText.text = "「KKNI」で始まる19文字または20文字のQRコードが対象です。"
     }
 
